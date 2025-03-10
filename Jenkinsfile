@@ -1,73 +1,78 @@
 pipeline {
     agent any
-
-    tools{
+    
+    tools {
         jdk 'jdk11'
         maven 'maven3'
     }
     
     environment {
-        DOCKER_IMAGE = "microservices-testing"
+        DOCKER_IMAGE = "anzzamadl/microservices-testing"
         DOCKER_CONTAINER = "microservices-container"
         DOCKER_PORT = "8081"
     }
 
     stages {
-        stage('Clone Repository') {
+        stage('Git Checkout') {
             steps {
                 git 'https://github.com/AnzZamAdl/microservices-testing-examples.git'
             }
         }
-
-        stage('Compile'){
-            steps{
+        
+        stage('Compile') {
+            steps {
                 sh "mvn clean compile"
             }
         }
-        
+
         stage('OWASP Dependency Check'){
             steps{
                 dependencyCheck additionalArguments: '--scan ./', odcInstallation: 'DP'
                 dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
             }
-
-        stage('Build'){
-            steps{
-                sh "mvn clean verify"
+            post {
+                always {
+                    archiveArtifacts artifacts: '**/dependency-check-report.xml', fingerprint: true
+                }
             }
         }
 
         stage('Run Tests') {
             steps {
                 script {
-                    sh 'mvn test'
+                    sh "mvn test"
                 }
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Build') {
+            steps {
+                sh "mvn package"
+            }
+        }
+
+        stage('Docker Build & Push') {
             steps {
                 script {
-                    withDockerRegistry(credentialsId: 'docker-login', toolName: 'docker'){
-                        sh "docker build -t ${DOCKER_IMAGE} ."
+                    withDockerRegistry(credentialsId: 'docker-login') {
+                        sh """
+                            docker build -t ${DOCKER_IMAGE} .
+                            docker tag ${DOCKER_IMAGE} ${DOCKER_IMAGE}:latest
+                            docker push ${DOCKER_IMAGE}:latest
+                        """
                     }
                 }
             }
         }
-
-        stage('Run Docker Container') {
+        
+        stage('Deploy to Container') {
             steps {
                 script {
-                    // Stop and remove any existing container
-                    sh """
-                        docker stop ${DOCKER_CONTAINER} || true
-                        docker rm ${DOCKER_CONTAINER} || true
-                    """
-                    
-                    // Run new container on port 8081
-                    withDockerRegistry(credentialsId: 'docker-login', toolName: 'docker'){
+                    sh "docker stop ${DOCKER_CONTAINER} || true"
+                    sh "docker rm ${DOCKER_CONTAINER} || true"
+                    withDockerRegistry(credentialsId: 'docker-login') {
                         sh """
-                            docker run -d -p ${DOCKER_PORT}:8080 --name ${DOCKER_CONTAINER} ${DOCKER_IMAGE}
+                            docker run -d --name ${DOCKER_CONTAINER} -p ${DOCKER_PORT}:8080 ${DOCKER_IMAGE}:latest
                         """
                     }
                 }

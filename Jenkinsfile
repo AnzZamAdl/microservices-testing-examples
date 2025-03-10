@@ -1,6 +1,11 @@
 pipeline {
     agent any
 
+    tools{
+        jdk 'jdk11'
+        maven 'maven3'
+    }
+    
     environment {
         DOCKER_IMAGE = "microservices-testing"
         DOCKER_CONTAINER = "microservices-container"

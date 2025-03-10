@@ -14,11 +14,9 @@ pipeline {
             }
         }
 
-        stage('Build with Maven') {
-            steps {
-                script {
-                    sh 'mvn clean install'
-                }
+        stage('Compile'){
+            steps{
+                sh "mvn clean compile"
             }
         }
         
@@ -27,6 +25,12 @@ pipeline {
                 dependencyCheck additionalArguments: '--scan ./', odcInstallation: 'DP'
                 dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
             }
+
+        stage('Build'){
+            steps{
+                sh "mvn clean verify"
+            }
+        }
 
         stage('Run Tests') {
             steps {

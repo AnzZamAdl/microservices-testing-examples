@@ -16,7 +16,7 @@
   </modules>
 
   <properties>
-    <java.version>11</java.version>
+    <java.version>17</java.version>
     <dropwizard.version>4.0.10</dropwizard.version>
     <pact.version>4.6.15</pact.version>
     <kotlin.version>2.0.21</kotlin.version>
